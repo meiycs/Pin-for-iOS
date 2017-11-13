@@ -1,4 +1,4 @@
-$app.validEnv = $env.app | $env.action
+var version = 1.1;
 $ui.render({
   type: "view",
   props: {
@@ -27,11 +27,21 @@ $ui.render({
         id: "bcList",
         bgcolor: $color("#eeeeee"),
         rowHeight: 70,
+        footer: {
+          type: "label",
+          props: {
+            height: 30,
+            text: "v" + version,
+            textColor:$color("#cccccc"),
+            font: $font(14),
+            align: $align.center
+          }
+        },
         actions: [{
           title: "删除",
           handler: function(sender, indexPath) {
             $device.taptic(0)
-            bcDataWrite(bcIds[indexPath.row], "del", indexPath.row)
+            bookCaseDataUpdate(bcIDs[indexPath.row], "del", indexPath.row)
           }
         }],
         template: [{
@@ -106,7 +116,7 @@ $ui.render({
       },
       events: {
         pulled(sender) {
-          if (bcData.length > 0) {
+          if (bookCaseData.length > 0) {
             bookCaseUpdateCheck()
           } else {
             $device.taptic(0)
@@ -258,9 +268,9 @@ function bookDetailView(bookid, mode) {
           {
             type: "button",
             props: {
-              title: !casebook(bookid) ? "＋追更新" : "－不追了",
+              title: !bookCheck(bookid) ? "＋追更新" : "－不追了",
               id: "detailAdd",
-              bgcolor: !casebook(bookid) ? $color("#992300") : $color("lightGray")
+              bgcolor: !bookCheck(bookid) ? $color("#992300") : $color("lightGray")
             },
             layout: function(make, view) {
               make.left.inset(45)
@@ -270,14 +280,14 @@ function bookDetailView(bookid, mode) {
             },
             events: {
               tapped(sender) {
-                if (!casebook(bookid)) {
+                if (!bookCheck(bookid)) {
                   sender.bgcolor = $color("lightGray")
                   sender.title = "－不追了"
-                  bcDataWrite(bookid, "add", resp.data)
+                  bookCaseDataUpdate(bookid, "add", resp.data)
                 } else {
                   sender.bgcolor = $color("#992300")
                   sender.title = "＋追更新"
-                  bcDataWrite(bookid, "del", bcIds.indexOf(bookid))
+                  bookCaseDataUpdate(bookid, "del", bcIDs.indexOf(bookid))
                 }
               }
             }
@@ -420,7 +430,7 @@ function bookSearchView() {
             events: {
               tapped(sender) {
                 $device.taptic(0);
-                bcDataWrite(sender.info._id, "add");
+                bookCaseDataUpdate(sender.info._id, "add");
                 sender.alpha = 0.1
               }
             }
@@ -518,7 +528,7 @@ function bsDefault() {
           },
           bsAdd: {
             info: item,
-            alpha: !casebook(item._id) ? 1 : 0.1
+            alpha: !bookCheck(item._id) ? 1 : 0.1
           },
           cover: {
             src: item.cover
@@ -556,7 +566,7 @@ function bookSearch(keyword) {
           },
           bsAdd: {
             info: item,
-            alpha: !casebook(item._id) ? 1 : 0.1
+            alpha: !bookCheck(item._id) ? 1 : 0.1
           },
           cover: {
             src: encodeURI("http://statics.zhuishushenqi.com" + $text.URLDecode(item.cover))
@@ -700,7 +710,7 @@ function bookTopView() {
               events: {
                 tapped(sender) {
                   $device.taptic(0);
-                  bcDataWrite(sender.info._id, "add");
+                  bookCaseDataUpdate(sender.info._id, "add");
                   sender.alpha = 0.1
                 }
               }
@@ -837,7 +847,7 @@ function getTopBooks() {
           },
           bookTopAdd: {
             info: item,
-            alpha: !casebook(item._id) ? 1 : 0.1
+            alpha: !bookCheck(item._id) ? 1 : 0.1
           }
         })
       })
@@ -1128,7 +1138,7 @@ function blBooksView() {
               events: {
                 tapped(sender) {
                   $device.taptic(0);
-                  bcDataWrite(sender.info, "add");
+                  bookCaseDataUpdate(sender.info, "add");
                   sender.alpha = 0.1
                 }
               }
@@ -1235,7 +1245,7 @@ function getBookListBooks(id) {
           },
           blAdd: {
             info: item._id,
-            alpha: !casebook(item._id) ? 1 : 0.1
+            alpha: !bookCheck(item._id) ? 1 : 0.1
           },
           blDetail: {
             info: item._id
@@ -1256,7 +1266,7 @@ var template = `
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style type="text/css">	
 body{
-background-color:#eeeeee;
+background-color:{{BGCOLOR}};
 font-family: <System>;
 margin-top:0px;
 margin-bottom:0px;
@@ -1357,7 +1367,7 @@ function reader() {
               selectPage = 1;
               getChapterContent(selectChapter, true)
             };
-            logWrite();
+            readLogWrite();
           }
         }
       }, {
@@ -1385,7 +1395,7 @@ function reader() {
               selectPage = 1;
               getChapterContent(selectChapter, true)
             };
-            logWrite();
+            readLogWrite();
           }
         }
       }, {
@@ -1400,12 +1410,15 @@ function reader() {
         },
         events: {
           tapped(sender) {
+
             $ui.menu({
               items: Object.keys(BgColor),
               handler: function(title) {
                 $("reader").eval({
                   script: "theme('" + BgColor[title] + "')"
-                })
+                });
+                settingData["readerBgColor"] = BgColor[title];
+                settingDataWrite()
               }
             })
           }
@@ -1550,7 +1563,7 @@ function getBookSource(bookid) {
 
 //获取小说章节
 function getBookChapter(sourceid, mode) {
-  var res = casebook();
+  var res = bookCheck();
   if (sourceid) {
     selectSource = sourceid
   } else if (res[1]) {
@@ -1600,7 +1613,7 @@ function getChapterContent(row, mode) {
     header: Header,
     handler: function(resp) {
       var chapter = formatContent(resp.data.chapter.body);
-      html = template.replace("{{TITLE}}", title).replace("{{CONTENT}}", chapter).replace("{{PAGE}}", selectPage);
+      html = template.replace("{{TITLE}}", title).replace("{{CONTENT}}", chapter).replace("{{PAGE}}", selectPage).replace("{{BGCOLOR}}", settingData.readerBgColor);
       if (!mode) {
         reader()
       };
@@ -1620,25 +1633,25 @@ function formatContent(str) {
 
 // 书架内小说更新检测
 function bookCaseUpdateCheck() {
-  if (bcData.length > 0) {
-    var ids = bcIds.join(",");
+  if (bookCaseData.length > 0) {
+    var ids = bcIDs.join(",");
     $http.get({
       url: "http://api.zhuishushenqi.com/book?view=updated&id=" + ids,
       handler: function(resp) {
         resp.data.map(function(item) {
-          var idx = bcIds.indexOf(item._id);
-          var old = bcData[idx].updated;
+          var idx = bcIDs.indexOf(item._id);
+          var old = bookCaseData[idx].updated;
           var msg = timeCalc(old,
             item.updated);
           if (msg[0]) {
-            bcData[idx].updated = item.updated;
-            bcData[idx].lastChapter = item.lastChapter;
-            bcData[idx].msg = msg[1];
+            bookCaseData[idx].updated = item.updated;
+            bookCaseData[idx].lastChapter = item.lastChapter;
+            bookCaseData[idx].msg = msg[1];
             updated.push(item._id);
           }
         });
         if (updated.length > 0) {
-          cacheWrite()
+          bookCaseDataWrite()
           loadBookCaseData()
           $ui.toast(updated.length + "本小说有更新", 1)
         } else {
@@ -1651,11 +1664,11 @@ function bookCaseUpdateCheck() {
 
 // 书架内小说更新时间格式化
 function timeCalc(old, now) {
-  var oldtime = new Date(old.replace(/T/g, " ").replace(/\.\d{3}Z/, "").replace(/-/g, "/")).getTime() / 1000
-  var nowtime = new Date(now.replace(/T/g, " ").replace(/\.\d{3}Z/, "").replace(/-/g, "/")).getTime() / 1000
-  if (nowtime > oldtime) {
+  var beganTime = new Date(old.replace(/T/g, " ").replace(/\.\d{3}Z/, "").replace(/-/g, "/")).getTime() / 1000
+  var afterTime = new Date(now.replace(/T/g, " ").replace(/\.\d{3}Z/, "").replace(/-/g, "/")).getTime() / 1000
+  if (afterTime > beganTime) {
     var msg;
-    var t = nowtime - oldtime;
+    var t = afterTime - beganTime;
     if (60 * 60 > t) {
       msg = Math.ceil(t / 60) + "分钟前有更新"
     } else if (t > 60 * 60 && t < 60 * 60 * 24) {
@@ -1670,11 +1683,11 @@ function timeCalc(old, now) {
 }
 
 //判断小说是否在书架并返回数据
-function casebook(bookid) {
+function bookCheck(bookid) {
   var id = bookid || selectBookId;
-  var index = bcIds.indexOf(id);
+  var index = bcIDs.indexOf(id);
   if (index > -1) {
-    var data = bcData[index];
+    var data = bookCaseData[index];
     return data.log ? [data, data.log] : [data, false]
   } else {
     return false
@@ -1682,34 +1695,44 @@ function casebook(bookid) {
 }
 
 //本地书架小说阅读记录写入
-function logWrite() {
-  var index = bcIds.indexOf(selectBookId);
+function readLogWrite() {
+  var index = bcIDs.indexOf(selectBookId);
   if (index > -1) {
-    bcData[index].log = {
+    bookCaseData[index].log = {
       "source": selectSource,
       "chapter": selectChapter,
       "page": selectPage
     };
-    cacheWrite()
+    bookCaseDataWrite()
   }
 }
 
-//内存数据写入
-function cacheWrite() {
+//小说数据写入
+function bookCaseDataWrite() {
   $file.write({
     data: $data({
-      string: JSON.stringify(bcData)
+      string: JSON.stringify(bookCaseData)
     }),
-    path: ConfigPath
+    path: BooksDataPath
+  })
+}
+
+//系统设置数据写入
+function settingDataWrite() {
+  $file.write({
+    data: $data({
+      string: JSON.stringify(settingData)
+    }),
+    path: ConfigDataPath
   })
 }
 
 // 本地书架数据写入
-function bcDataWrite(bookid, mode, row) {
-  var index = bcIds.indexOf(bookid)
+function bookCaseDataUpdate(bookid, mode, row) {
+  var index = bcIDs.indexOf(bookid);
   if (mode == "add") {
     if (index > -1) {
-      $ui.toast("《" + bcData[index].title + "》已在书架中", 0.5)
+      $ui.toast("《" + bookCaseData[index].title + "》已在书架中", 0.5)
       return
     };
     var data = JSON.parse($http.sync("http://api.zhuishushenqi.com/book/" + bookid))
@@ -1726,32 +1749,32 @@ function bcDataWrite(bookid, mode, row) {
       }
     }
     $("bcList").insert({
-      indexPath: $indexPath(0, bcData.length),
+      indexPath: $indexPath(0, bookCaseData.length),
       value: item
     })
 
-    bcData.push(data);
-    bcIds.push(bookid);
+    bookCaseData.push(data);
+    bcIDs.push(bookid);
     $ui.toast("已收藏《" + data.title + "》", 0.5);
 
   } else if (mode == "del") {
     $("bcList").delete(row)
-    $ui.toast("已删除《" + bcData[index].title + "》", 0.5);
-    bcIds.splice(index, 1);
-    bcData.splice(index, 1);
+    $ui.toast("已删除《" + bookCaseData[index].title + "》", 0.5);
+    bcIDs.splice(index, 1);
+    bookCaseData.splice(index, 1);
   }
-  cacheWrite()
+  bookCaseDataWrite();
   $("bookCaseCount").text =
-    bcData.length > 0 ? "   已收藏" + bcData.length + "本书" : "   ➕请搜索添加小说";
+    bookCaseData.length > 0 ? "   已收藏" + bookCaseData.length + "本书" : "   ➕请搜索添加小说";
 }
 
 // 加载本地缓存数据
 function loadBookCaseData() {
   $("bookCaseCount").text =
-    bcData.length > 0 ? "   已收藏" + bcData.length + "本书" : "   ➕请搜索添加小说";
-  if (bcData.length > 0) {
+    bookCaseData.length > 0 ? "   已收藏" + bookCaseData.length + "本书" : "   ➕请搜索添加小说";
+  if (bookCaseData.length > 0) {
     var data = [];
-    bcData.map(function(item) {
+    bookCaseData.map(function(item) {
       data.push({
         bookid: item._id,
         bookname: item.title,
@@ -1776,32 +1799,68 @@ function loadBookCaseData() {
   }
 }
 
-// 启动
-function main() {
-  updated = [];
-  if (!$file.exists("drive://ebook")) {
-    $file.mkdir("drive://ebook");
-    bcData = [];
-    setting = [];
-    bcIds = []
-  } else {
-    LocalData = JSON.parse($file.read(ConfigPath).string);
-    bcData = LocalData[0];
-    setting = LocalData[1];
-    bcIds = bcData.map(function(i) {
-      return i._id
-    })
-  }
-  loadBookCaseData()
-  $thread.background({
-    handler: function() {
-      bookCaseUpdateCheck()
+//检测扩展更新
+function scriptVersionUpdate(){
+  $http.get({
+    url:"https://github.com/meiycs/Pin-for-iOS/raw/master/info",
+    handler:function(resp){
+      var afterVersion = resp.data.reader.version;
+      var msg = resp.data.reader.msg;
+      if(afterVersion>version){
+        $ui.alert({
+          title:"检测到新的版本！",
+          message:"当前最新版本为v"+afterVersion+"，是否更新?\n更新完成后请手动重启扩展。\n"+msg,
+          actions:[{
+            title:"更新",
+            handler:function(){
+              var url = "pin://install?url=https://github.com/meiycs/Pin-for-iOS/raw/master/reader.js&name=reader";
+              $app.openURL(encodeURI(url));
+              $app.close()
+            }
+          },{
+            title:"取消"
+          }
+          ]
+        })
+        }
     }
   })
 }
 
-// 数据缓存路径
-var ConfigPath = "drive://ebook/books.json"
+
+// 启动
+function main() {
+  updated = [];
+  if (!$file.exists("drive://ebook")) {
+    $file.mkdir("drive://ebook")
+  };
+  if (!$file.read(BooksDataPath)) {
+    bookCaseData = [];
+    bcIDs = []
+  } else {
+    bookCaseData = JSON.parse($file.read(BooksDataPath).string);
+    bcIDs = bookCaseData.map(function(i) {
+      return i._id
+    });
+  };
+  if (!$file.read(ConfigDataPath)) {
+    settingData = { "readerBgColor": "#eeeeee" }
+  } else {
+    settingData = JSON.parse($file.read(ConfigDataPath).string)
+  };
+  loadBookCaseData();
+  $thread.background({
+    handler: function() {
+      bookCaseUpdateCheck();
+      scriptVersionUpdate()
+    }
+  })
+}
+
+// 小说数据路径
+var BooksDataPath = "drive://ebook/books.json";
+//设置数据路径
+var ConfigDataPath = "drive://ebook/config.json";
 // 请求UA
 var Header = {
   "User-Agent": "YouShaQi/2.25.1 (iPhone; iOS 10.3.1; Scale/2.00)",
