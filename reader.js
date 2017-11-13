@@ -1872,3 +1872,4 @@ $thread.background({
     main()
   }
 })
+//测试
