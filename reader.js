@@ -1287,7 +1287,7 @@ letter-spacing:2px;
 </head>
 <body>
 <div id="text" style="font-size:22px;line-height:35px;">
-<p><center><font color="#008080">{{TITLE}}</font></center></p>
+<p><center>{{TITLE}}</center></p>
 {{CONTENT}}
 </div>
 </body>
