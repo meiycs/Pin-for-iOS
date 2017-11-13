@@ -1813,7 +1813,7 @@ function scriptVersionUpdate(){
           actions:[{
             title:"更新",
             handler:function(){
-              var url = "pin://install?url=https://github.com/meiycs/Pin-for-iOS/raw/master/reader.js&name=reader"+afterVersion;
+              var url = "pin://install?url=https://github.com/meiycs/Pin-for-iOS/raw/master/reader.js&name=小说阅读器"+afterVersion;
               $app.openURL(encodeURI(url));
               $app.close()
             }
