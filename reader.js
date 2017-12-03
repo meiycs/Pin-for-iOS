@@ -1,4 +1,4 @@
-var version = 1.2;
+var version = 1.3;
 $ui.render({
   type: "view",
   props: {
@@ -1315,6 +1315,20 @@ $notify("pageCount", newPageHeight)
 
 const BgColor = { '羊皮棕': '#a28a6a', '豆沙绿': '#c7edcc', '杏仁黄': '#ccc8ad', '玫瑰棕': '#a27b7b', '白银灰': '#eeeeee' }
 
+function changeTitleBarColor(color) {
+  colorCode = color || settingData.readerBgColor;
+  var app = $app.info.bundleID.split(".").pop();
+  switch (app) {
+    case "pin":
+      $ui.window.super.views[2].bgcolor = $color(colorCode);
+      break;
+    case "jsbox":
+      $ui.window.super.super.super.views[1].views[0].bgcolor = $color(colorCode);
+      break
+
+  }
+}
+
 function reader() {
   $ui.push({
     type: "view",
@@ -1328,8 +1342,8 @@ function reader() {
           id: "readerPage",
           textColor: $color("darkGray"),
           font: $font(12),
-          insets:$insets(4,0,4,0),
-          align:$align.center
+          insets: $insets(4, 0, 4, 0),
+          align: $align.center
         },
         layout: function(make) {
           make.bottom.left.right.inset(0)
@@ -1342,11 +1356,11 @@ function reader() {
           id: "readerTitle",
           textColor: $color("darkGray"),
           font: $font(14),
-          insets:$insets((readerMargin-34)/2,12,(readerMargin-34)/2,0)
+          insets: $insets((readerMargin - 34) / 2, 12, (readerMargin - 34) / 2, 0)
         },
         layout: function(make) {
           make.top.left.right.inset(0)
-          make.height.equalTo(readerMargin-20)
+          make.height.equalTo(readerMargin - 20)
         }
       }, {
         type: "web",
@@ -1360,9 +1374,6 @@ function reader() {
           make.left.right.inset(0)
         },
         events: {
-          didFail: function(sender, navigation, error) {
-$ui.action(error)
-},
           pageCount: function(obj) {
             pageCount = obj / readerHeight;
             $("readerPage").text = selectPage + "/" + pageCount
@@ -1399,14 +1410,15 @@ $ui.action(error)
               getChapterContent(selectChapter, true)
             };
             readLogWrite();
-        },
-        longPressed(sender){
-           $device.taptic(0);
-              selectChapter = selectChapter == 0 ? bookChapterData.length - 1 : selectChapter - 1;
-              selectPage = 1;
-              getChapterContent(selectChapter, true)
+          },
+          longPressed(sender) {
+            $device.taptic(0);
+            selectChapter = selectChapter == 0 ? bookChapterData.length - 1 : selectChapter - 1;
+            selectPage = 1;
+            getChapterContent(selectChapter, true)
             readLogWrite();
-        }}
+          }
+        }
       }, {
         type: "button",
         props: {
@@ -1435,14 +1447,14 @@ $ui.action(error)
             };
             readLogWrite();
           },
-        longPressed(sender){
-         $device.taptic(0);
-              selectChapter = selectChapter == bookChapterData.length - 1 ? 0 : selectChapter + 1;
-              selectPage = 1;
-              getChapterContent(selectChapter, true)
-            readLogWrite();  
-        }
+          longPressed(sender) {
+            $device.taptic(0);
+            selectChapter = selectChapter == bookChapterData.length - 1 ? 0 : selectChapter + 1;
+            selectPage = 1;
+            getChapterContent(selectChapter, true)
+            readLogWrite();
           }
+        }
       }, {
         type: "button",
         props: {
@@ -1464,13 +1476,15 @@ $ui.action(error)
                 $("readerTitle").bgcolor = $color(BgColor[title]);
                 $("readerPage").bgcolor = $color(BgColor[title]);
                 settingData["readerBgColor"] = BgColor[title];
+                changeTitleBarColor(BgColor[title]);
                 settingDataWrite()
               }
             })
           },
-          longPressed(sender){
+          longPressed(sender) {
             $device.taptic(0);
-            $("reader").html = html
+            $("reader").html = html;
+            selectChapter--
           }
         }
       }
@@ -1670,10 +1684,11 @@ function getChapterContent(row, mode) {
       var chapter = formatContent(resp.data.chapter.body);
       html = template.replace("{{CONTENT}}", chapter).replace("{{PAGE}}", selectPage).replace("{{BGCOLOR}}", settingData.readerBgColor).replace("{{WINDOWHEIGHT}}", readerHeight);
       if (!mode) {
-        reader(readerMargin)
+        reader(readerMargin);
+        changeTitleBarColor()
       };
       $("readerTitle").text = title;
-      $("reader").html = html
+      $("reader").html = html;
     }
   })
 }
